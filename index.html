@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Superviseurs | 4ème RGPH/RGAE Cameroun</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splashScreen">
+  <div class="splash-inner">
+    <div class="splash-logo"><i class="fas fa-user-tie"></i></div>
+    <h4 class="mt-3 fw-bold text-white">Dashboard Superviseurs</h4>
+    <p class="text-white-50 mb-4">4ème RGPH/RGAE · Cameroun</p>
+    <div class="spinner-border text-white" style="width:2rem;height:2rem;" role="status"></div>
+    <p class="text-white-50 mt-3 small" id="splashMsg">Chargement des données…</p>
+  </div>
+</div>
+
+<div id="progressBar" class="progress-bar-top" style="display:none"></div>
+
+<!-- HEADER -->
+<nav class="navbar navbar-dark sticky-top" id="mainNav">
+  <div class="container-fluid px-3">
+    <div class="d-flex align-items-center gap-2">
+      <i class="fas fa-user-tie text-warning fs-5"></i>
+      <span class="navbar-brand mb-0 fw-bold">Suivi Superviseurs</span>
+      <span class="badge bg-warning text-dark ms-1" id="totalBadge">—</span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <span class="text-white-50 small d-none d-md-inline" id="lastSyncLabel">—</span>
+      <span class="status-dot" id="statusDot"></span>
+      <button class="btn btn-sm btn-outline-light" id="refreshBtn" onclick="reloadData()">
+        <i class="fas fa-sync-alt me-1"></i>Actualiser
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <div class="container-fluid px-3">
+    <ul class="nav nav-tabs border-0 flex-nowrap overflow-auto" id="mainTabs">
+      <li class="nav-item">
+        <a class="nav-link active" href="#" onclick="switchTab('overview',this);return false;">
+          <i class="fas fa-tachometer-alt me-1"></i>Vue d'ensemble
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="switchTab('avancement',this);return false;">
+          <i class="fas fa-tasks me-1"></i>Avancement ZD
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="switchTab('rh',this);return false;">
+          <i class="fas fa-users me-1"></i>Ressources Humaines
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="switchTab('difficultes',this);return false;">
+          <i class="fas fa-exclamation-triangle me-1"></i>Difficultés
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="switchTab('data',this);return false;">
+          <i class="fas fa-table me-1"></i>Données brutes
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="container-fluid px-3 py-3" id="mainContent">
+
+  <!-- ── TAB: VUE D'ENSEMBLE ── -->
+  <div id="tab-overview">
+
+    <div class="period-banner mb-3">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+          <i class="fas fa-calendar-alt me-2 text-warning"></i>
+          <strong>Rapport superviseurs</strong>
+          <span class="text-muted ms-2 small" id="ops-period">—</span>
+        </div>
+        <div class="d-flex gap-3 small text-muted">
+          <span><i class="fas fa-user-tie me-1"></i><span id="ops-nb-sup">—</span> superviseurs</span>
+          <span><i class="fas fa-map-marker-alt me-1"></i><span id="ops-nb-regions">—</span> régions</span>
+          <span><i class="fas fa-file-alt me-1"></i><span id="ops-nb-fiches">—</span> fiches</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#2563eb20;color:#2563eb"><i class="fas fa-user-tie"></i></div>
+          <div class="kpi-value" id="kpi-sup">—</div>
+          <div class="kpi-label">Superviseurs actifs</div>
+          <div class="kpi-sub" id="kpi-sup-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#16a34a20;color:#16a34a"><i class="fas fa-map"></i></div>
+          <div class="kpi-value" id="kpi-zd-total">—</div>
+          <div class="kpi-label">ZD assignées (total)</div>
+          <div class="kpi-sub" id="kpi-zd-total-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#16a34a20;color:#16a34a"><i class="fas fa-check-double"></i></div>
+          <div class="kpi-value" id="kpi-maj-ach">—</div>
+          <div class="kpi-label">ZD MAJ achevées</div>
+          <div class="kpi-sub" id="kpi-maj-ach-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#7c3aed20;color:#7c3aed"><i class="fas fa-clipboard-check"></i></div>
+          <div class="kpi-value" id="kpi-den-ach">—</div>
+          <div class="kpi-label">ZD Dénombrement ach.</div>
+          <div class="kpi-sub" id="kpi-den-ach-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#0891b220;color:#0891b2"><i class="fas fa-users"></i></div>
+          <div class="kpi-value" id="kpi-agents-op">—</div>
+          <div class="kpi-label">Agents opérationnels</div>
+          <div class="kpi-sub" id="kpi-agents-op-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#dc262620;color:#dc2626"><i class="fas fa-money-bill-wave"></i></div>
+          <div class="kpi-value" id="kpi-non-payes">—</div>
+          <div class="kpi-label">Agents non intégralement payés</div>
+          <div class="kpi-sub" id="kpi-non-payes-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#d9770620;color:#d97706"><i class="fas fa-mobile-alt"></i></div>
+          <div class="kpi-value" id="kpi-tic">—</div>
+          <div class="kpi-label">Problèmes TIC</div>
+          <div class="kpi-sub" id="kpi-tic-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#dc262620;color:#dc2626"><i class="fas fa-shield-alt"></i></div>
+          <div class="kpi-value" id="kpi-incidents">—</div>
+          <div class="kpi-label">Incidents sécuritaires</div>
+          <div class="kpi-sub" id="kpi-incidents-sub">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alertes + Appréciation -->
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-7">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-bell me-2 text-danger"></i>Alertes prioritaires</div>
+          <div id="alertes-body"></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-5">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-star me-2 text-warning"></i>Appréciation des journées</div>
+          <div id="appreciation-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau superviseurs -->
+    <div class="dash-card mb-3">
+      <div class="dash-card-title"><i class="fas fa-list-ul me-2 text-primary"></i>Tableau de bord par superviseur</div>
+      <div id="superviseurs-body" class="table-responsive"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="dash-card">
+      <div class="dash-card-title"><i class="fas fa-tasks me-2 text-warning"></i>Actions requises</div>
+      <div class="row g-3" id="actions-body"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: AVANCEMENT ZD ── -->
+  <div id="tab-avancement" style="display:none">
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-6">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-pencil-ruler me-2 text-success"></i>Avancement Mise à Jour (MAJ)</div>
+          <div id="avancement-maj-body"></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-clipboard-list me-2 text-purple"></i>Avancement Dénombrement</div>
+          <div id="avancement-den-body"></div>
+        </div>
+      </div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-title"><i class="fas fa-th-list me-2"></i>Détail par ZC / Département</div>
+      <div id="detail-zc-body" class="table-responsive"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: RH ── -->
+  <div id="tab-rh" style="display:none">
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#2563eb20;color:#2563eb"><i class="fas fa-users"></i></div>
+          <div class="kpi-value" id="rh-prevus">—</div>
+          <div class="kpi-label">Agents prévus (total)</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#16a34a20;color:#16a34a"><i class="fas fa-user-check"></i></div>
+          <div class="kpi-value" id="rh-operationnels">—</div>
+          <div class="kpi-label">Opérationnels aujourd'hui</div>
+          <div class="kpi-sub" id="rh-op-sub">—</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#d9770620;color:#d97706"><i class="fas fa-user-times"></i></div>
+          <div class="kpi-value" id="rh-absents">—</div>
+          <div class="kpi-label">Absents aujourd'hui</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-icon" style="background:#dc262620;color:#dc2626"><i class="fas fa-user-minus"></i></div>
+          <div class="kpi-value" id="rh-desistements">—</div>
+          <div class="kpi-label">Désistements (cumul)</div>
+          <div class="kpi-sub" id="rh-reservistes-sub">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-money-bill-wave me-2 text-danger"></i>Situation des paiements</div>
+          <div id="rh-paiements-body"></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-map-pin me-2 text-primary"></i>Couverture terrain</div>
+          <div id="rh-couverture-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: DIFFICULTÉS ── -->
+  <div id="tab-difficultes" style="display:none">
+    <div class="row g-3">
+      <div class="col-12 col-lg-4">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-mobile-alt me-2 text-warning"></i>Problèmes TIC</div>
+          <div id="diff-tic-body"></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-route me-2 text-danger"></i>Difficultés d'accès aux ménages</div>
+          <div id="diff-acces-body"></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="dash-card h-100">
+          <div class="dash-card-title"><i class="fas fa-box-open me-2 text-info"></i>Matériel manquant</div>
+          <div id="diff-materiel-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: DONNÉES BRUTES ── -->
+  <div id="tab-data" style="display:none">
+    <div class="dash-card">
+      <div class="dash-card-title d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-database me-2"></i>Soumissions brutes</span>
+        <span class="badge bg-secondary" id="data-count">—</span>
+      </div>
+      <div class="table-responsive">
+        <table id="rawTable" class="table table-sm table-hover" style="width:100%"></table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /mainContent -->
+
+<footer class="text-center text-muted small py-3 border-top mt-4">
+  Dashboard Superviseurs · 4ème RGPH/RGAE Cameroun ·
+  Dernière sync : <span id="footer-sync">—</span> · Source : KoboToolbox
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

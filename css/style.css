@@ -1,0 +1,153 @@
+/* =====================================================================
+   DASHBOARD SUPERVISEURS — 4ème RGPH/RGAE Cameroun
+   ===================================================================== */
+:root {
+  --primary: #1e3a5f;
+  --accent:  #f59e0b;
+  --danger:  #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --info:    #0891b2;
+  --purple:  #7c3aed;
+  --bg:      #f1f5f9;
+  --card-bg: #ffffff;
+  --border:  #e2e8f0;
+  --text:    #1e293b;
+  --muted:   #64748b;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
+
+/* ── Splash ── */
+#splashScreen {
+  position: fixed; inset: 0; background: linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
+  display: flex; align-items: center; justify-content: center; z-index: 9999;
+}
+.splash-inner { text-align: center; }
+.splash-logo { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center; margin: 0 auto;
+  font-size: 2rem; color: #fff; }
+
+/* ── Progress bar ── */
+.progress-bar-top { height: 3px; background: var(--accent); position: fixed; top: 56px; left: 0; right: 0; z-index: 999;
+  animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+/* ── Navbar ── */
+#mainNav { background: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,.2); min-height: 52px; z-index: 100; }
+.navbar-brand { font-size: .95rem; letter-spacing: .01em; }
+
+/* ── Tab bar ── */
+.tab-bar { background: #fff; border-bottom: 2px solid var(--border); position: sticky; top: 52px; z-index: 99; }
+.tab-bar .nav-link { color: var(--muted); padding: .55rem 1rem; font-size: .82rem; font-weight: 500;
+  border-radius: 0; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+.tab-bar .nav-link:hover { color: var(--primary); }
+.tab-bar .nav-link.active { color: var(--primary); border-bottom-color: var(--accent); font-weight: 700; }
+
+/* ── Period banner ── */
+.period-banner { background: var(--primary); color: #fff; padding: .6rem 1rem; border-radius: 8px; font-size: .82rem; }
+
+/* ── KPI Cards ── */
+.kpi-card {
+  background: var(--card-bg); border-radius: 10px; padding: 1rem .9rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.07); border: 1px solid var(--border); height: 100%;
+}
+.kpi-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center;
+  justify-content: center; font-size: 1rem; margin-bottom: .5rem; }
+.kpi-value { font-size: 1.8rem; font-weight: 800; line-height: 1.1; color: var(--text); }
+.kpi-label { font-size: .72rem; color: var(--muted); margin-top: .2rem; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.kpi-sub   { font-size: .71rem; color: var(--muted); margin-top: .25rem; }
+
+/* ── Dash cards ── */
+.dash-card { background: var(--card-bg); border-radius: 10px; padding: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  border: 1px solid var(--border); }
+.dash-card-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); margin-bottom: .75rem; }
+
+/* ── Status dot ── */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+.status-dot.online  { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.status-dot.loading { background: #f59e0b; animation: pulse .8s infinite; }
+.status-dot.error   { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Bar items (progress bars) ── */
+.bar-item { margin-bottom: .55rem; }
+.bar-label { display: flex; justify-content: space-between; font-size: .73rem; margin-bottom: 3px; }
+.bar-track { height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.bar-fill  { height: 100%; border-radius: 4px; transition: width .5s ease; }
+
+/* ── Superviseurs table ── */
+.sup-table { width: 100%; font-size: .77rem; border-collapse: collapse; }
+.sup-table thead th { background: var(--primary); color: #fff; padding: .5rem .6rem; font-weight: 600;
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.sup-table tbody tr:hover { background: #f8fafc; }
+.sup-table td { padding: .45rem .6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+
+/* ── Progress inline ── */
+.prog-wrap { display: flex; align-items: center; gap: 6px; }
+.prog-bar-sm { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; min-width: 40px; }
+.prog-bar-fill { height: 100%; border-radius: 3px; }
+
+/* ── Badges ── */
+.badge-alerte { padding: .2em .55em; border-radius: 4px; font-size: .68rem; font-weight: 700; }
+.badge-ok     { background: #dcfce7; color: #16a34a; }
+.badge-warn   { background: #fef3c7; color: #d97706; }
+.badge-danger { background: #fee2e2; color: #dc2626; }
+
+/* ── Alert items ── */
+.alert-item { border-radius: 8px; padding: .65rem .8rem; margin-bottom: .55rem; border-left: 4px solid; }
+.alert-item.critique { background: #fef2f2; border-color: var(--danger); }
+.alert-item.urgent   { background: #fffbeb; border-color: var(--warning); }
+.alert-item.info     { background: #eff6ff; border-color: #2563eb; }
+.alert-item.ok       { background: #f0fdf4; border-color: var(--success); }
+.alert-item-header   { display: flex; align-items: center; gap: .5rem; margin-bottom: .2rem; }
+.alert-badge { padding: .15em .5em; border-radius: 4px; font-size: .65rem; font-weight: 800; text-transform: uppercase; }
+.alert-badge.critique { background: var(--danger); color: #fff; }
+.alert-badge.urgent   { background: var(--warning); color: #fff; }
+.alert-badge.info     { background: #2563eb; color: #fff; }
+.alert-badge.ok       { background: var(--success); color: #fff; }
+.alert-item-title  { font-weight: 600; font-size: .8rem; }
+.alert-item-detail { font-size: .73rem; color: var(--muted); }
+
+/* ── Appréciation bars ── */
+.apprec-bar-item { margin-bottom: .5rem; }
+.apprec-bar-label { display: flex; justify-content: space-between; font-size: .73rem; margin-bottom: 3px; }
+.apprec-bar-track { height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.apprec-bar-fill  { height: 100%; border-radius: 4px; }
+
+/* ── Action cards ── */
+.action-card { background: var(--card-bg); border-radius: 10px; padding: .9rem; height: 100%;
+  border-top: 4px solid var(--action-color, #2563eb); box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+.action-card-header { display: flex; align-items: center; gap: .4rem; margin-bottom: .5rem; }
+.action-number   { width: 22px; height: 22px; border-radius: 50%; background: var(--action-color, #2563eb);
+  color: #fff; font-size: .7rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.action-priority { font-size: .65rem; font-weight: 800; text-transform: uppercase; color: var(--action-color, #2563eb); }
+.action-title    { font-weight: 700; font-size: .8rem; margin-bottom: .25rem; }
+.action-desc     { font-size: .72rem; color: var(--muted); margin-bottom: .4rem; }
+.action-footer   { font-size: .68rem; color: var(--muted); font-style: italic; border-top: 1px solid var(--border); padding-top: .3rem; }
+
+/* ── Diff items ── */
+.diff-row { display: flex; align-items: center; justify-content: space-between;
+  padding: .35rem 0; border-bottom: 1px solid var(--border); font-size: .77rem; }
+.diff-row:last-child { border-bottom: none; }
+.diff-val { font-weight: 700; font-size: .9rem; }
+.diff-val.zero { color: var(--success); }
+.diff-val.warn { color: var(--warning); }
+.diff-val.danger { color: var(--danger); }
+
+/* ── DataTable overrides ── */
+.dataTables_wrapper .dataTables_filter input { border: 1px solid var(--border); border-radius: 6px;
+  padding: .3rem .6rem; font-size: .78rem; }
+.dataTables_wrapper .dataTables_length select { border: 1px solid var(--border); border-radius: 6px;
+  padding: .25rem .4rem; font-size: .78rem; }
+#rawTable th { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; background: #f8fafc; }
+#rawTable td { font-size: .75rem; }
+
+/* ── Responsive ── */
+@media (max-width: 576px) {
+  .kpi-value { font-size: 1.4rem; }
+  .dash-card { padding: .7rem; }
+  .period-banner { font-size: .75rem; }
+}

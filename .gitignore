@@ -1,0 +1,18 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# PHP & local config
+*.php
+config.php
+proxy.php
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor
+.vscode/
+*.swp
+*.swo
