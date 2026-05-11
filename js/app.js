@@ -19,13 +19,130 @@ const REGION_NAMES = {
 };
 
 // ── État global ───────────────────────────────────────────────────────────
-let allData      = [];
+let allData       = [];
 let activeProfile = 'all';   // 'all' | 'SR' | 'SD'
+let activeRegion  = '';
+let activeDept    = '';
+let activeArr     = '';
+let activeZC      = '';
 
-/** Données filtrées selon le profil actif */
+/** Données filtrées selon profil + entités administratives */
 function filtered() {
-  if (activeProfile === 'all') return allData;
-  return allData.filter(r => r['grp_profil/profil'] === activeProfile);
+  return allData.filter(r => {
+    if (activeProfile !== 'all' && r['grp_profil/profil'] !== activeProfile) return false;
+    if (activeRegion && r['grp_profil/region']         !== activeRegion)    return false;
+    if (activeDept   && r['grp_profil/departement']    !== activeDept)      return false;
+    if (activeArr    && r['grp_profil/arrondissement']  !== activeArr)       return false;
+    if (activeZC) {
+      const zcs = (r['grp_1b/rep_zc'] || []).map(z => z['grp_1b/rep_zc/zc_nom']);
+      if (!zcs.includes(activeZC)) return false;
+    }
+    return true;
+  });
+}
+
+// ── Helpers ZD (évite la répétition dans chaque render) ─────────────────
+function getZdAsgn(r) {
+  let v = toInt(r['grp_1b/tot_zd_sd'] || r['grp_1a/tot_zd_sr']);
+  if (!v) {
+    (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_zd_assignees']));
+    (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_zd_assignees']));
+  }
+  return v;
+}
+function getMajAch(r) {
+  let v = toInt(r['grp_1b/tot_maj_sd'] || r['grp_1a/tot_maj_sr']);
+  if (!v) {
+    (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_maj_achevees']));
+    (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_maj_achevees']));
+  }
+  return v;
+}
+function getDenAch(r) {
+  let v = toInt(r['grp_1b/tot_den_sd'] || r['grp_1a/tot_den_sr']);
+  if (!v) {
+    (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_den_achevees']));
+    (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_den_achevees']));
+  }
+  return v;
+}
+function getMajEnc(r) {
+  let v = 0;
+  (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_maj_encours']));
+  (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_maj_encours']));
+  return v;
+}
+function getDenEnc(r) {
+  let v = 0;
+  (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_den_encours']));
+  (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_den_encours']));
+  return v;
+}
+
+// ── Filtres administratifs ───────────────────────────────────────────────
+function populateAdminFilters() {
+  _fillSelect('filterRegion', '', 'Toutes régions',
+    [...new Set(allData.map(r => r['grp_profil/region']).filter(Boolean))].sort(),
+    v => REGION_NAMES[v] || v);
+  _cascadeAdmin();
+}
+
+function onAdminFilter(level) {
+  activeRegion = byId('filterRegion').value;
+  if (level === 'region') { activeDept = ''; activeArr = ''; activeZC = ''; }
+  if (level === 'dept')   { activeArr  = ''; activeZC  = ''; }
+  if (level === 'arr')    { activeZC   = ''; }
+  activeDept = byId('filterDept').value;
+  activeArr  = byId('filterArr').value;
+  activeZC   = byId('filterZC').value;
+  _cascadeAdmin();
+  _updateAdminUI();
+  renderAll();
+}
+
+function clearAdminFilter() {
+  activeRegion = activeDept = activeArr = activeZC = '';
+  ['filterRegion','filterDept','filterArr','filterZC'].forEach(id => { const el = byId(id); if (el) el.value = ''; });
+  _cascadeAdmin();
+  _updateAdminUI();
+  renderAll();
+}
+
+function _cascadeAdmin() {
+  // Département : filtré par région
+  const baseR = activeRegion ? allData.filter(r => r['grp_profil/region'] === activeRegion) : allData;
+  _fillSelect('filterDept', activeDept, 'Tous départements',
+    [...new Set(baseR.map(r => r['grp_profil/departement']).filter(Boolean))].sort());
+
+  // Arrondissement : filtré par région + département
+  const baseD = activeDept ? baseR.filter(r => r['grp_profil/departement'] === activeDept) : baseR;
+  _fillSelect('filterArr', activeArr, 'Tous arrondissements',
+    [...new Set(baseD.map(r => r['grp_profil/arrondissement']).filter(Boolean))].sort());
+
+  // ZC : filtrée par région + département + arrondissement
+  const baseA = activeArr ? baseD.filter(r => r['grp_profil/arrondissement'] === activeArr) : baseD;
+  const allZCs = [];
+  baseA.forEach(r => (r['grp_1b/rep_zc']||[]).forEach(z => {
+    const n = z['grp_1b/rep_zc/zc_nom']; if (n) allZCs.push(n);
+  }));
+  _fillSelect('filterZC', activeZC, 'Toutes ZC',
+    [...new Set(allZCs)].sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true})),
+    v => `ZC ${v}`);
+}
+
+function _fillSelect(id, currentVal, placeholder, values, labelFn) {
+  const el = byId(id); if (!el) return;
+  el.innerHTML = `<option value="">${placeholder}</option>`
+    + values.map(v => `<option value="${v}" ${v===currentVal?'selected':''}>${labelFn ? labelFn(v) : v}</option>`).join('');
+}
+
+function _updateAdminUI() {
+  const hasFilter = activeRegion || activeDept || activeArr || activeZC;
+  const btn = byId('clearAdminBtn');
+  if (btn) btn.style.display = hasFilter ? '' : 'none';
+  const cnt = filtered().length;
+  const countEl = byId('adminFilterCount');
+  if (countEl) countEl.textContent = hasFilter ? `${cnt} fiche${cnt>1?'s':''}` : '';
 }
 
 /** Changer le filtre profil et re-rendre */
@@ -73,6 +190,7 @@ async function start() {
 
     byId('totalBadge').textContent = `${allData.length} fiche${allData.length > 1 ? 's' : ''}`;
     setStatus('online');
+    populateAdminFilters();
     renderAll();
     hideSplash();
   } catch (err) {
@@ -96,6 +214,7 @@ async function reloadData() {
                              + ' ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }));
     }
     setStatus('online');
+    populateAdminFilters();
     renderAll();
   } catch(err) {
     setStatus('error');
@@ -109,6 +228,7 @@ async function reloadData() {
 function renderAll() {
   if (!allData.length) return;
   renderOverview();
+  renderTerritoire();
   renderAvancement();
   renderRH();
   renderDifficultes();
@@ -165,28 +285,11 @@ function renderOverview() {
   let totalDenAch = 0, totalDenEnc = 0;
 
   d.forEach(r => {
-    // Niveau SR (rep_dept)
-    (r['grp_1a/rep_dept'] || []).forEach(dep => {
-      totalZdAsgn  += toInt(dep['grp_1a/rep_dept/dept_zd_assignees']);
-      totalMajAch  += toInt(dep['grp_1a/rep_dept/dept_maj_achevees']);
-      totalMajEnc  += toInt(dep['grp_1a/rep_dept/dept_maj_encours']);
-      totalDenAch  += toInt(dep['grp_1a/rep_dept/dept_den_achevees']);
-      totalDenEnc  += toInt(dep['grp_1a/rep_dept/dept_den_encours']);
-    });
-    // Niveau SD (rep_zc)
-    (r['grp_1b/rep_zc'] || []).forEach(zc => {
-      totalZdAsgn  += toInt(zc['grp_1b/rep_zc/zc_zd_assignees']);
-      totalMajAch  += toInt(zc['grp_1b/rep_zc/zc_maj_achevees']);
-      totalMajEnc  += toInt(zc['grp_1b/rep_zc/zc_maj_encours']);
-      totalDenAch  += toInt(zc['grp_1b/rep_zc/zc_den_achevees']);
-      totalDenEnc  += toInt(zc['grp_1b/rep_zc/zc_den_encours']);
-    });
-    // Totaux calculés fiche (fallback si repeats vides)
-    if (!(r['grp_1a/rep_dept'] || []).length && !(r['grp_1b/rep_zc'] || []).length) {
-      totalZdAsgn += toInt(r['grp_1b/tot_zd_sd'] || r['grp_1a/tot_zd_sr']);
-      totalMajAch += toInt(r['grp_1b/tot_maj_sd'] || r['grp_1a/tot_maj_sr']);
-      totalDenAch += toInt(r['grp_1b/tot_den_sd'] || r['grp_1a/tot_den_sr']);
-    }
+    totalZdAsgn += getZdAsgn(r);
+    totalMajAch += getMajAch(r);
+    totalMajEnc += getMajEnc(r);
+    totalDenAch += getDenAch(r);
+    totalDenEnc += getDenEnc(r);
   });
 
   const txMaj = pct(totalMajAch, totalZdAsgn);
@@ -385,22 +488,9 @@ function renderOverview() {
     const reg    = REGION_NAMES[r['grp_profil/region']] || r['grp_profil/region'] || '—';
     const date   = r['grp_date/date_fiche'] || '—';
 
-    // ZD depuis calculs fiche
-    let zdAsgn = toInt(r['grp_1b/tot_zd_sd'] || r['grp_1a/tot_zd_sr']);
-    let majAch = toInt(r['grp_1b/tot_maj_sd'] || r['grp_1a/tot_maj_sr']);
-    let denAch = toInt(r['grp_1b/tot_den_sd'] || r['grp_1a/tot_den_sr']);
-    if (!zdAsgn) {
-      (r['grp_1b/rep_zc'] || []).forEach(z => {
-        zdAsgn += toInt(z['grp_1b/rep_zc/zc_zd_assignees']);
-        majAch += toInt(z['grp_1b/rep_zc/zc_maj_achevees']);
-        denAch += toInt(z['grp_1b/rep_zc/zc_den_achevees']);
-      });
-      (r['grp_1a/rep_dept'] || []).forEach(dep => {
-        zdAsgn += toInt(dep['grp_1a/rep_dept/dept_zd_assignees']);
-        majAch += toInt(dep['grp_1a/rep_dept/dept_maj_achevees']);
-        denAch += toInt(dep['grp_1a/rep_dept/dept_den_achevees']);
-      });
-    }
+    const zdAsgn = getZdAsgn(r);
+    const majAch = getMajAch(r);
+    const denAch = getDenAch(r);
 
     const txMajR = zdAsgn > 0 ? Math.round(majAch / zdAsgn * 100) : 0;
     const txDenR = zdAsgn > 0 ? Math.round(denAch / zdAsgn * 100) : 0;
@@ -487,34 +577,219 @@ function renderOverview() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  TAB 2 — AVANCEMENT ZD
+//  TAB 2 — VUE TERRITORIALE
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTerritoire() {
+  const data = filtered();
+  const body = byId('territoire-body');
+  const countEl = byId('terr-count');
+  if (!body) return;
+
+  if (!data.length) {
+    if (countEl) countEl.textContent = '0';
+    body.innerHTML = '<div class="text-muted small p-4 text-center"><i class="fas fa-map me-2"></i>Aucune donnée pour cette sélection.</div>';
+    return;
+  }
+  if (countEl) countEl.textContent = `${data.length} fiche${data.length>1?'s':''}`;
+
+  // ── Construire l'arborescence Région → Département → Arrondissement ──
+  const tree = {};
+  data.forEach(r => {
+    const reg  = r['grp_profil/region']        || '—';
+    const dept = r['grp_profil/departement']   || '—';
+    const arr  = r['grp_profil/arrondissement'] || '—';
+    if (!tree[reg])         tree[reg] = {};
+    if (!tree[reg][dept])   tree[reg][dept] = {};
+    if (!tree[reg][dept][arr]) tree[reg][dept][arr] = [];
+    tree[reg][dept][arr].push(r);
+  });
+
+  const colBar = (pct, color) => `
+    <div class="prog-wrap">
+      <span style="color:${color};font-weight:700;min-width:30px;font-size:.72rem">${pct}%</span>
+      <div class="prog-bar-sm"><div class="prog-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  const barColor = p => p >= 80 ? '#16a34a' : p >= 50 ? '#d97706' : '#dc2626';
+
+  let html = '';
+
+  Object.keys(tree).sort().forEach(reg => {
+    const regName  = REGION_NAMES[reg] || reg;
+    const regRows  = Object.values(tree[reg]).flatMap(d => Object.values(d).flat());
+    const rZd  = regRows.reduce((s,r) => s+getZdAsgn(r), 0);
+    const rMaj = regRows.reduce((s,r) => s+getMajAch(r), 0);
+    const rDen = regRows.reduce((s,r) => s+getDenAch(r), 0);
+    const rAgOp  = regRows.reduce((s,r) => s+toInt(r['grp_rh/rh_agents_operationnels']), 0);
+    const rAgPr  = regRows.reduce((s,r) => s+toInt(r['grp_rh/rh_agents_prevus']), 0);
+    const rTxMaj = rZd > 0 ? Math.round(rMaj/rZd*100) : 0;
+    const rTxDen = rZd > 0 ? Math.round(rDen/rZd*100) : 0;
+
+    html += `<div class="terr-region">
+      <div class="terr-region-header">
+        <i class="fas fa-globe-africa"></i>
+        <span class="terr-region-name">${regName}</span>
+        <div class="terr-stats ms-auto">
+          <span class="terr-stat">ZD&nbsp;<strong>${rZd}</strong></span>
+          <span class="terr-stat">MAJ&nbsp;<strong style="color:${barColor(rTxMaj)}">${rTxMaj}%</strong></span>
+          <span class="terr-stat">Dénom.&nbsp;<strong style="color:${barColor(rTxDen)}">${rTxDen}%</strong></span>
+          <span class="terr-stat">Agents&nbsp;<strong>${rAgOp}/${rAgPr}</strong></span>
+          <span class="terr-stat">${regRows.length}&nbsp;fiche${regRows.length>1?'s':''}</span>
+        </div>
+      </div>`;
+
+    Object.keys(tree[reg]).sort().forEach(dept => {
+      const deptRows = Object.values(tree[reg][dept]).flat();
+      const dZd  = deptRows.reduce((s,r) => s+getZdAsgn(r), 0);
+      const dMaj = deptRows.reduce((s,r) => s+getMajAch(r), 0);
+      const dDen = deptRows.reduce((s,r) => s+getDenAch(r), 0);
+      const dTxMaj = dZd > 0 ? Math.round(dMaj/dZd*100) : 0;
+      const dTxDen = dZd > 0 ? Math.round(dDen/dZd*100) : 0;
+
+      html += `<div class="terr-dept">
+        <div class="terr-dept-header">
+          <i class="fas fa-building"></i>
+          <span class="terr-dept-name">${dept}</span>
+          <span class="terr-dept-stats ms-auto">
+            ZD: ${dZd} &nbsp;·&nbsp;
+            MAJ: <strong style="color:${barColor(dTxMaj)}">${dMaj} (${dTxMaj}%)</strong> &nbsp;·&nbsp;
+            Dénom.: <strong style="color:${barColor(dTxDen)}">${dDen} (${dTxDen}%)</strong> &nbsp;·&nbsp;
+            ${deptRows.length} sup.
+          </span>
+        </div>`;
+
+      Object.keys(tree[reg][dept]).sort().forEach(arr => {
+        const arrRows = tree[reg][dept][arr];
+        const aZd  = arrRows.reduce((s,r) => s+getZdAsgn(r), 0);
+        const aMaj = arrRows.reduce((s,r) => s+getMajAch(r), 0);
+        const aDen = arrRows.reduce((s,r) => s+getDenAch(r), 0);
+        const aTxMaj = aZd > 0 ? Math.round(aMaj/aZd*100) : 0;
+        const aTxDen = aZd > 0 ? Math.round(aDen/aZd*100) : 0;
+
+        html += `<div class="terr-arr">
+          <div class="terr-arr-header">
+            <i class="fas fa-map-pin"></i>
+            <span class="terr-arr-name">${arr}</span>
+            <span style="font-size:.69rem;color:var(--muted);margin-left:.25rem">
+              · ZD: ${aZd} · MAJ: <strong style="color:${barColor(aTxMaj)}">${aTxMaj}%</strong>
+              · Dénom.: <strong style="color:${barColor(aTxDen)}">${aTxDen}%</strong>
+            </span>
+            <span class="terr-arr-count ms-auto">${arrRows.length} superviseur${arrRows.length>1?'s':''}</span>
+          </div>
+          <div class="table-responsive">
+          <table class="sup-table">
+            <thead><tr>
+              <th>Superviseur</th><th>Profil</th><th>Date</th>
+              <th>ZD Asgn.</th>
+              <th>MAJ ach. %</th><th>Dénom. ach. %</th>
+              <th>Agents op./prév.</th><th>Non payés</th><th>Appréciation</th>
+            </tr></thead>
+            <tbody>`;
+
+        arrRows.forEach(r => {
+          const nom   = r['grp_profil/nom_superviseur'] || '—';
+          const prof  = r['grp_profil/profil'] || '—';
+          const date  = r['grp_date/date_fiche'] || '—';
+          const zdA   = getZdAsgn(r), majA = getMajAch(r), denA = getDenAch(r);
+          const tMaj  = zdA > 0 ? Math.round(majA/zdA*100) : 0;
+          const tDen  = zdA > 0 ? Math.round(denA/zdA*100) : 0;
+          const agOp  = toInt(r['grp_rh/rh_agents_operationnels']);
+          const agPr  = toInt(r['grp_rh/rh_agents_prevus']);
+          const np    = toInt(r['grp_rh/calc_non_integraux']);
+          const appr  = r['grp_appreciation/appreciation_globale'] || '—';
+          const aC    = appr==='satisfaisant'?'#16a34a':appr==='acceptable'?'#0891b2':appr==='difficile'?'#d97706':'#dc2626';
+
+          html += `<tr>
+            <td><strong>${nom}</strong></td>
+            <td>${profileBadgeHtml(prof)}</td>
+            <td style="font-size:.7rem;color:var(--muted)">${date}</td>
+            <td style="font-weight:700">${zdA||'—'}</td>
+            <td>${colBar(tMaj, barColor(tMaj))}</td>
+            <td>${colBar(tDen, barColor(tDen))}</td>
+            <td>${agOp}/${agPr}</td>
+            <td><span class="badge-alerte ${np>0?'badge-danger':'badge-ok'}">${np>0?np+' NP':'OK'}</span></td>
+            <td><span style="color:${aC};font-weight:600;font-size:.72rem">${appr}</span></td>
+          </tr>`;
+
+          // ── Lignes ZC (détail pour SD) ──
+          (r['grp_1b/rep_zc']||[]).forEach(zc => {
+            const zNom = zc['grp_1b/rep_zc/zc_nom'] || '?';
+            const zZd  = toInt(zc['grp_1b/rep_zc/zc_zd_assignees']);
+            const zMaj = toInt(zc['grp_1b/rep_zc/zc_maj_achevees']);
+            const zMajE= toInt(zc['grp_1b/rep_zc/zc_maj_encours']);
+            const zDen = toInt(zc['grp_1b/rep_zc/zc_den_achevees']);
+            const zDenE= toInt(zc['grp_1b/rep_zc/zc_den_encours']);
+            const zTMaj= zZd>0?Math.round(zMaj/zZd*100):0;
+            const zTDen= zZd>0?Math.round(zDen/zZd*100):0;
+            const obs  = zc['grp_1b/rep_zc/zc_observations'] || '';
+            html += `<tr class="terr-zc-row">
+              <td colspan="2"><i class="fas fa-layer-group me-1" style="color:var(--accent)"></i>ZC ${zNom}${obs?' — <em>'+obs+'</em>':''}</td>
+              <td></td>
+              <td>${zZd}</td>
+              <td>
+                ${colBar(zTMaj, barColor(zTMaj))}
+                <span style="font-size:.66rem;color:var(--muted)">enc.: ${zMajE}</span>
+              </td>
+              <td>
+                ${colBar(zTDen, barColor(zTDen))}
+                <span style="font-size:.66rem;color:var(--muted)">enc.: ${zDenE}</span>
+              </td>
+              <td colspan="3" style="color:var(--muted);font-size:.68rem">
+                MAJ NE: ${Math.max(0,zZd-zMaj-zMajE)} · Dénom. NE: ${Math.max(0,zZd-zDen-zDenE)}
+              </td>
+            </tr>`;
+          });
+
+          // ── Lignes Département (détail pour SR) ──
+          (r['grp_1a/rep_dept']||[]).forEach(dep => {
+            const dNom = dep['grp_1a/rep_dept/dept_nom'] || 'Département';
+            const dZd  = toInt(dep['grp_1a/rep_dept/dept_zd_assignees']);
+            const dMaj = toInt(dep['grp_1a/rep_dept/dept_maj_achevees']);
+            const dMajE= toInt(dep['grp_1a/rep_dept/dept_maj_encours']);
+            const dDen = toInt(dep['grp_1a/rep_dept/dept_den_achevees']);
+            const dDenE= toInt(dep['grp_1a/rep_dept/dept_den_encours']);
+            const dTMaj= dZd>0?Math.round(dMaj/dZd*100):0;
+            const dTDen= dZd>0?Math.round(dDen/dZd*100):0;
+            const obs  = dep['grp_1a/rep_dept/dept_observations'] || '';
+            html += `<tr class="terr-zc-row">
+              <td colspan="2"><i class="fas fa-city me-1" style="color:var(--info)"></i>${dNom}${obs?' — <em>'+obs+'</em>':''}</td>
+              <td></td>
+              <td>${dZd}</td>
+              <td>
+                ${colBar(dTMaj, barColor(dTMaj))}
+                <span style="font-size:.66rem;color:var(--muted)">enc.: ${dMajE}</span>
+              </td>
+              <td>
+                ${colBar(dTDen, barColor(dTDen))}
+                <span style="font-size:.66rem;color:var(--muted)">enc.: ${dDenE}</span>
+              </td>
+              <td colspan="3" style="color:var(--muted);font-size:.68rem">
+                MAJ NE: ${Math.max(0,dZd-dMaj-dMajE)} · Dénom. NE: ${Math.max(0,dZd-dDen-dDenE)}
+              </td>
+            </tr>`;
+          });
+        });
+
+        html += `</tbody></table></div></div>`; // fin arr
+      });
+      html += `</div>`; // fin dept
+    });
+    html += `</div>`; // fin region
+  });
+
+  body.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TAB 3 — AVANCEMENT ZD
 // ═══════════════════════════════════════════════════════════════════════════
 function renderAvancement() {
   // Barres MAJ par superviseur
   const rows = filtered().map(r => {
-    const nom = r['grp_profil/nom_superviseur'] || '?';
+    const nom    = r['grp_profil/nom_superviseur'] || '?';
     const profil = r['grp_profil/profil'] || '?';
-    let zdAsgn = toInt(r['grp_1b/tot_zd_sd'] || r['grp_1a/tot_zd_sr']);
-    let majAch = toInt(r['grp_1b/tot_maj_sd'] || r['grp_1a/tot_maj_sr']);
-    let majEnc = 0, denAch = toInt(r['grp_1b/tot_den_sd'] || r['grp_1a/tot_den_sr']);
-    let denEnc = 0;
-    if (!zdAsgn) {
-      (r['grp_1b/rep_zc']||[]).forEach(z => {
-        zdAsgn += toInt(z['grp_1b/rep_zc/zc_zd_assignees']);
-        majAch += toInt(z['grp_1b/rep_zc/zc_maj_achevees']);
-        majEnc += toInt(z['grp_1b/rep_zc/zc_maj_encours']);
-        denAch += toInt(z['grp_1b/rep_zc/zc_den_achevees']);
-        denEnc += toInt(z['grp_1b/rep_zc/zc_den_encours']);
-      });
-      (r['grp_1a/rep_dept']||[]).forEach(dep => {
-        zdAsgn += toInt(dep['grp_1a/rep_dept/dept_zd_assignees']);
-        majAch += toInt(dep['grp_1a/rep_dept/dept_maj_achevees']);
-        majEnc += toInt(dep['grp_1a/rep_dept/dept_maj_encours']);
-        denAch += toInt(dep['grp_1a/rep_dept/dept_den_achevees']);
-        denEnc += toInt(dep['grp_1a/rep_dept/dept_den_encours']);
-      });
-    }
-    return { nom, profil, zdAsgn, majAch, majEnc, denAch, denEnc };
+    return { nom, profil,
+      zdAsgn: getZdAsgn(r), majAch: getMajAch(r), majEnc: getMajEnc(r),
+      denAch: getDenAch(r), denEnc: getDenEnc(r) };
   }).sort((a, b) => {
     const pa = a.zdAsgn > 0 ? a.majAch / a.zdAsgn : 0;
     const pb = b.zdAsgn > 0 ? b.majAch / b.zdAsgn : 0;
@@ -768,7 +1043,7 @@ function renderRawTable() {
 //  Navigation onglets
 // ═══════════════════════════════════════════════════════════════════════════
 function switchTab(name, el) {
-  ['overview','avancement','rh','difficultes','data'].forEach(t => {
+  ['overview','territoire','avancement','rh','difficultes','data'].forEach(t => {
     const el2 = byId('tab-' + t);
     if (el2) el2.style.display = t === name ? '' : 'none';
   });

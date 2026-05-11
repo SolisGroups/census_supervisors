@@ -70,6 +70,11 @@
         </a>
       </li>
       <li class="nav-item">
+        <a class="nav-link" href="#" onclick="switchTab('territoire',this);return false;">
+          <i class="fas fa-sitemap me-1"></i>Vue Territoriale
+        </a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link" href="#" onclick="switchTab('avancement',this);return false;">
           <i class="fas fa-tasks me-1"></i>Avancement ZD
         </a>
@@ -93,7 +98,48 @@
   </div>
 </div>
 
+<!-- BARRE FILTRE TERRITORIAL (sticky sous les onglets) -->
+<div class="admin-filter-bar" id="adminFilterBar">
+  <div class="container-fluid px-3">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="admin-filter-label">
+        <i class="fas fa-map-marked-alt me-1"></i>Territoire :
+      </span>
+      <select id="filterRegion" class="admin-select" onchange="onAdminFilter('region')">
+        <option value="">Toutes régions</option>
+      </select>
+      <i class="fas fa-chevron-right admin-sep"></i>
+      <select id="filterDept" class="admin-select" onchange="onAdminFilter('dept')">
+        <option value="">Tous départements</option>
+      </select>
+      <i class="fas fa-chevron-right admin-sep"></i>
+      <select id="filterArr" class="admin-select" onchange="onAdminFilter('arr')">
+        <option value="">Tous arrondissements</option>
+      </select>
+      <i class="fas fa-chevron-right admin-sep"></i>
+      <select id="filterZC" class="admin-select" onchange="onAdminFilter('zc')">
+        <option value="">Toutes ZC</option>
+      </select>
+      <button class="admin-clear-btn" id="clearAdminBtn" onclick="clearAdminFilter()" style="display:none">
+        <i class="fas fa-times me-1"></i>Effacer
+      </button>
+      <span class="admin-filter-count ms-auto" id="adminFilterCount"></span>
+    </div>
+  </div>
+</div>
+
 <div class="container-fluid px-3 py-3" id="mainContent">
+
+  <!-- ── TAB: VUE TERRITORIALE ── -->
+  <div id="tab-territoire" style="display:none">
+    <div class="dash-card mb-3">
+      <div class="dash-card-title d-flex align-items-center justify-content-between">
+        <span><i class="fas fa-sitemap me-2 text-primary"></i>Arborescence territoriale</span>
+        <span class="badge bg-secondary" id="terr-count">—</span>
+      </div>
+      <div id="territoire-body"></div>
+    </div>
+  </div>
 
   <!-- ── TAB: VUE D'ENSEMBLE ── -->
   <div id="tab-overview">
