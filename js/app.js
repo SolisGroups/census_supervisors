@@ -786,3 +786,28 @@ function setStatus(s) {
   if (!dot) return;
   dot.className = 'status-dot ' + s;
 }
+
+// ── Thème sombre / clair ─────────────────────────────────────────────────
+(function initTheme() {
+  const saved = localStorage.getItem('sup-theme') || 'light';
+  applyTheme(saved);
+})();
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+function applyTheme(mode) {
+  document.documentElement.setAttribute('data-theme', mode);
+  localStorage.setItem('sup-theme', mode);
+  const icon = byId('themeIcon');
+  if (icon) {
+    icon.className = mode === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+  }
+  // Rafraîchir DataTables si initialisé (thème change les couleurs de fond)
+  const rt = byId('rawTable');
+  if (rt && $.fn && $.fn.DataTable && $.fn.DataTable.isDataTable(rt)) {
+    renderRawTable();
+  }
+}
