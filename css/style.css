@@ -145,6 +145,15 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
 #rawTable th { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; background: #f8fafc; }
 #rawTable td { font-size: .75rem; }
 
+/* ── Profile filter ── */
+#profileFilter .btn { font-size: .75rem; padding: .25rem .55rem; }
+#profileFilter .profile-btn.active { font-weight: 700; }
+#profileFilter .btn-outline-light:hover { background: rgba(255,255,255,.15); }
+
+.filter-badge-sr { background: #dcfce7; color: #15803d; padding: .15em .5em; border-radius: 4px; font-size: .7rem; font-weight: 800; }
+.filter-badge-sd { background: #fef9c3; color: #b45309; padding: .15em .5em; border-radius: 4px; font-size: .7rem; font-weight: 800; }
+.filter-badge-all { background: rgba(255,255,255,.15); color: #fff; padding: .15em .5em; border-radius: 4px; font-size: .7rem; font-weight: 800; }
+
 /* ── Responsive ── */
 @media (max-width: 576px) {
   .kpi-value { font-size: 1.4rem; }

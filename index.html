@@ -32,8 +32,23 @@
       <span class="navbar-brand mb-0 fw-bold">Suivi Superviseurs</span>
       <span class="badge bg-warning text-dark ms-1" id="totalBadge">—</span>
     </div>
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
       <span class="text-white-50 small d-none d-md-inline" id="lastSyncLabel">—</span>
+      <!-- Filtre profil -->
+      <div class="btn-group btn-group-sm" role="group" id="profileFilter">
+        <button type="button" class="btn btn-warning text-dark fw-bold profile-btn active" data-profile="all"
+                onclick="setProfileFilter('all',this)">
+          <i class="fas fa-layer-group me-1"></i>Tous
+        </button>
+        <button type="button" class="btn btn-outline-light profile-btn" data-profile="SR"
+                onclick="setProfileFilter('SR',this)">
+          <i class="fas fa-user-shield me-1"></i>SR
+        </button>
+        <button type="button" class="btn btn-outline-light profile-btn" data-profile="SD"
+                onclick="setProfileFilter('SD',this)">
+          <i class="fas fa-user-tie me-1"></i>SD
+        </button>
+      </div>
       <span class="status-dot" id="statusDot"></span>
       <button class="btn btn-sm btn-outline-light" id="refreshBtn" onclick="reloadData()">
         <i class="fas fa-sync-alt me-1"></i>Actualiser
@@ -87,10 +102,11 @@
           <strong>Rapport superviseurs</strong>
           <span class="text-muted ms-2 small" id="ops-period">—</span>
         </div>
-        <div class="d-flex gap-3 small text-muted">
+        <div class="d-flex gap-3 small text-muted flex-wrap">
           <span><i class="fas fa-user-tie me-1"></i><span id="ops-nb-sup">—</span> superviseurs</span>
           <span><i class="fas fa-map-marker-alt me-1"></i><span id="ops-nb-regions">—</span> régions</span>
           <span><i class="fas fa-file-alt me-1"></i><span id="ops-nb-fiches">—</span> fiches</span>
+          <span id="ops-filter-badge"></span>
         </div>
       </div>
     </div>

@@ -19,7 +19,31 @@ const REGION_NAMES = {
 };
 
 // ── État global ───────────────────────────────────────────────────────────
-let allData = [];
+let allData      = [];
+let activeProfile = 'all';   // 'all' | 'SR' | 'SD'
+
+/** Données filtrées selon le profil actif */
+function filtered() {
+  if (activeProfile === 'all') return allData;
+  return allData.filter(r => r['grp_profil/profil'] === activeProfile);
+}
+
+/** Changer le filtre profil et re-rendre */
+function setProfileFilter(val, btn) {
+  activeProfile = val;
+  document.querySelectorAll('.profile-btn').forEach(b => {
+    const isActive = b.dataset.profile === val;
+    b.classList.toggle('active', isActive);
+    if (isActive) {
+      b.classList.remove('btn-outline-light');
+      b.classList.add('btn-warning', 'text-dark');
+    } else {
+      b.classList.add('btn-outline-light');
+      b.classList.remove('btn-warning', 'text-dark');
+    }
+  });
+  renderAll();
+}
 
 // ── Démarrage ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -91,11 +115,29 @@ function renderAll() {
   renderRawTable();
 }
 
+/** Badge couleur selon profil */
+function profileBadgeHtml(profil) {
+  if (profil === 'SR') return '<span class="badge-alerte badge-ok" style="font-size:.68rem">SR</span>';
+  if (profil === 'SD') return '<span class="badge-alerte badge-warn" style="font-size:.68rem">SD</span>';
+  return `<span class="badge-alerte" style="font-size:.68rem;background:#e2e8f0;color:#334155">${profil}</span>`;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  TAB 1 — VUE D'ENSEMBLE
 // ═══════════════════════════════════════════════════════════════════════════
 function renderOverview() {
-  const d = allData;
+  const d = filtered();
+
+  // ── Badge filtre actif ──
+  const filterBadgeEl = byId('ops-filter-badge');
+  if (filterBadgeEl) {
+    if (activeProfile === 'SR')
+      filterBadgeEl.innerHTML = '<span class="filter-badge-sr"><i class="fas fa-user-shield me-1"></i>Filtre : Superviseurs Régionaux</span>';
+    else if (activeProfile === 'SD')
+      filterBadgeEl.innerHTML = '<span class="filter-badge-sd"><i class="fas fa-user-tie me-1"></i>Filtre : Superviseurs Départementaux</span>';
+    else
+      filterBadgeEl.innerHTML = '<span class="filter-badge-all"><i class="fas fa-layer-group me-1"></i>Tous profils</span>';
+  }
 
   // ── Identités ──
   const superviseurs = new Set(d.map(r => r['grp_profil/nom_superviseur']).filter(Boolean));
@@ -316,7 +358,17 @@ function renderOverview() {
   byId('appreciation-body').innerHTML = appHtml;
 
   // ─────── TABLEAU SUPERVISEURS ───────
-  let tHtml = `<table class="sup-table">
+  const profileLabel = activeProfile === 'SR' ? 'Superviseurs Régionaux (SR)'
+                     : activeProfile === 'SD' ? 'Superviseurs Départementaux (SD)'
+                     : 'Tous superviseurs';
+  let tHtml = `<div style="font-size:.72rem;color:#64748b;margin-bottom:.5rem">
+    <i class="fas fa-filter me-1"></i>${profileLabel} · ${d.length} fiche${d.length>1?'s':''}
+  </div>`;
+  if (!d.length) {
+    tHtml += `<div class="text-muted small p-3 text-center">Aucune fiche pour ce profil.</div>`;
+    byId('superviseurs-body').innerHTML = tHtml;
+  } else {
+  tHtml += `<table class="sup-table">
     <thead><tr>
       <th>Superviseur</th><th>Profil</th><th>Région</th><th>ZD Asgn.</th>
       <th>MAJ ach. / %</th><th>Dénom. ach. / %</th>
@@ -392,6 +444,7 @@ function renderOverview() {
   });
   tHtml += '</tbody></table>';
   byId('superviseurs-body').innerHTML = tHtml;
+  } // end else
 
   // ─────── ACTIONS REQUISES ───────
   const actions = [];
@@ -438,7 +491,7 @@ function renderOverview() {
 // ═══════════════════════════════════════════════════════════════════════════
 function renderAvancement() {
   // Barres MAJ par superviseur
-  const rows = allData.map(r => {
+  const rows = filtered().map(r => {
     const nom = r['grp_profil/nom_superviseur'] || '?';
     const profil = r['grp_profil/profil'] || '?';
     let zdAsgn = toInt(r['grp_1b/tot_zd_sd'] || r['grp_1a/tot_zd_sr']);
@@ -499,7 +552,7 @@ function renderAvancement() {
       <th>Dénom. ach.</th><th>Dénom. enc.</th><th>Dénom. NE</th><th>Observations</th>
     </tr></thead><tbody>`;
 
-  allData.forEach(r => {
+  filtered().forEach(r => {
     const nom = r['grp_profil/nom_superviseur'] || '?';
     const profil = r['grp_profil/profil'] || '?';
 
@@ -561,7 +614,7 @@ function renderAvancement() {
 function renderRH() {
   let prevus=0, op=0, abs=0, desist=0, reserv=0, payes=0, nonPa=0, zdSansCouv=0;
   let tp=0, trf=0, tpd=0, tsal=0;
-  allData.forEach(r => {
+  filtered().forEach(r => {
     prevus     += toInt(r['grp_rh/rh_agents_prevus']);
     op         += toInt(r['grp_rh/rh_agents_operationnels']);
     abs        += toInt(r['grp_rh/rh_absents']);
@@ -617,7 +670,7 @@ function renderDifficultes() {
   let matBot=0, matTorch=0, matChas=0, matCasq=0, matPolo=0, matSac=0;
   let incidents = 0;
 
-  allData.forEach(r => {
+  filtered().forEach(r => {
     ticPanne  += toInt(r['grp_diff/tic_smartphones_panne']);
     ticReseau += toInt(r['grp_diff/tic_sans_reseau']);
     ticGPS    += toInt(r['grp_diff/tic_gps_defaillant']);
@@ -675,7 +728,14 @@ function renderDifficultes() {
 //  TAB 5 — DONNÉES BRUTES
 // ═══════════════════════════════════════════════════════════════════════════
 function renderRawTable() {
-  if (!allData.length) return;
+  const data = filtered();
+  if (!data.length) {
+    setText('data-count', '0 soumission');
+    const table = byId('rawTable');
+    if ($.fn.DataTable.isDataTable(table)) $(table).DataTable().destroy();
+    table.innerHTML = '<tbody><tr><td class="text-muted small p-3">Aucune fiche pour ce profil.</td></tr></tbody>';
+    return;
+  }
   const cols = [
     'grp_date/date_fiche','grp_profil/profil','grp_profil/nom_superviseur',
     'grp_profil/region','grp_profil/departement','grp_profil/num_zs',
@@ -688,12 +748,13 @@ function renderRawTable() {
     'ZD Asgn.','MAJ Ach.','Dénom. Ach.','Tx MAJ%','Tx Dénom%',
     'Ag. Prévus','Ag. Op.','Non Payés','Appréciation','Alerte'];
 
-  setText('data-count', `${allData.length} soumission${allData.length>1?'s':''}`);
+  const profileLabel = activeProfile === 'SR' ? ' · SR uniquement' : activeProfile === 'SD' ? ' · SD uniquement' : '';
+  setText('data-count', `${data.length} soumission${data.length>1?'s':''}${profileLabel}`);
 
   const table = byId('rawTable');
   if ($.fn.DataTable.isDataTable(table)) $(table).DataTable().destroy();
   table.innerHTML = '<thead><tr>' + labels.map(l => `<th>${l}</th>`).join('') + '</tr></thead><tbody>'
-    + allData.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('')
+    + data.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('')
     + '</tbody>';
 
   $(table).DataTable({
