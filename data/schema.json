@@ -159,8 +159,8 @@
     "xls": "https://kc.kobotoolbox.org/pdba/reports/aGFaz86f9uVHSr4LX37haY/export.xlsx",
     "csv": "https://kc.kobotoolbox.org/pdba/reports/aGFaz86f9uVHSr4LX37haY/export.csv"
   },
-  "deployment__submission_count": 41,
-  "deployment__last_submission_time": "2026-05-13T06:11:52.404965Z",
+  "deployment__submission_count": 44,
+  "deployment__last_submission_time": "2026-05-13T08:06:00.854989Z",
   "deployment__encrypted": false,
   "deployment__uuid": "0eac878ce1274a22aebf04141e04263e",
   "deployment_status": "deployed",
@@ -7700,35 +7700,56 @@
   ],
   "effective_permissions": [
     {
-      "codename": "validate_submissions"
-    },
-    {
-      "codename": "add_submissions"
-    },
-    {
-      "codename": "view_asset"
-    },
-    {
-      "codename": "change_submissions"
-    },
-    {
       "codename": "manage_asset"
-    },
-    {
-      "codename": "delete_submissions"
     },
     {
       "codename": "change_asset"
     },
     {
-      "codename": "view_submissions"
+      "codename": "add_submissions"
+    },
+    {
+      "codename": "validate_submissions"
+    },
+    {
+      "codename": "change_submissions"
+    },
+    {
+      "codename": "view_asset"
     },
     {
       "codename": "delete_asset"
+    },
+    {
+      "codename": "view_submissions"
+    },
+    {
+      "codename": "delete_submissions"
     }
   ],
   "exports": "https://kf.kobotoolbox.org/api/v2/assets/aGFaz86f9uVHSr4LX37haY/exports/?format=json",
-  "export_settings": [],
+  "export_settings": [
+    {
+      "uid": "esVLL6NoQnAqBCTZRhSPd83",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aGFaz86f9uVHSr4LX37haY/export-settings/esVLL6NoQnAqBCTZRhSPd83/?format=json",
+      "data_url_csv": "https://kf.kobotoolbox.org/api/v2/assets/aGFaz86f9uVHSr4LX37haY/export-settings/esVLL6NoQnAqBCTZRhSPd83/data.csv?format=json",
+      "data_url_xlsx": "https://kf.kobotoolbox.org/api/v2/assets/aGFaz86f9uVHSr4LX37haY/export-settings/esVLL6NoQnAqBCTZRhSPd83/data.xlsx?format=json",
+      "name": "",
+      "date_modified": "2026-05-13T08:39:26.470946Z",
+      "export_settings": {
+        "lang": "French (fr)",
+        "type": "xls",
+        "query": {},
+        "fields": [],
+        "group_sep": "/",
+        "multiple_select": "both",
+        "include_media_url": true,
+        "xls_types_as_text": false,
+        "hierarchy_in_labels": false,
+        "fields_from_all_versions": true
+      }
+    }
+  ],
   "data": "https://kf.kobotoolbox.org/api/v2/assets/aGFaz86f9uVHSr4LX37haY/data/?format=json",
   "children": {
     "count": 0
