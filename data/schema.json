@@ -159,8 +159,8 @@
     "xls": "https://kc.kobotoolbox.org/pdba/reports/aGFaz86f9uVHSr4LX37haY/export.xlsx",
     "csv": "https://kc.kobotoolbox.org/pdba/reports/aGFaz86f9uVHSr4LX37haY/export.csv"
   },
-  "deployment__submission_count": 122,
-  "deployment__last_submission_time": "2026-05-15T20:38:02.488470Z",
+  "deployment__submission_count": 123,
+  "deployment__last_submission_time": "2026-05-15T21:12:16.514689Z",
   "deployment__encrypted": false,
   "deployment__uuid": "0eac878ce1274a22aebf04141e04263e",
   "deployment_status": "deployed",
