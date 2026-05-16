@@ -1,1 +1,1 @@
-https://solisgroups.github.io/census_supervisors/
+https://jondoa.github.io/census_supervisors/
