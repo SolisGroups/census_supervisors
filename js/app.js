@@ -360,6 +360,12 @@ function renderOverview() {
   const txMaj = pct(totalMajAch, totalZdAsgn);
   const txDen = pct(totalDenAch, totalZdAsgn);
 
+  // Badge % inline — affiché à droite du chiffre principal d'un KPI
+  const pctBadge = (val, color) =>
+    `<span style="font-size:.5em;font-weight:700;vertical-align:middle;margin-left:4px;` +
+    `background:${color}18;color:${color};border-radius:4px;padding:1px 5px">${val}%</span>`;
+  const rateColor = r => parseFloat(r) >= 80 ? '#16a34a' : parseFloat(r) >= 50 ? '#d97706' : '#dc2626';
+
   // ── RH ──
   let totalAgPrevus = 0, totalAgOp = 0, totalAgAbs = 0, totalDesist = 0;
   let totalReserv = 0, totalNonPaInteg = 0, totalZdSansCouv = 0;
@@ -394,30 +400,51 @@ function renderOverview() {
   });
 
   // ─────── AFFICHAGE KPIs ───────
+  const txOp  = pct(totalAgOp,       totalAgPrevus);
+  const pctNP = totalAgPrevus > 0 ? parseFloat(pct(totalNonPaInteg, totalAgPrevus)).toFixed(0) : 0;
+  const pctAbs= totalAgPrevus > 0 ? parseFloat(pct(totalAgAbs,       totalAgPrevus)).toFixed(0) : 0;
+  const pctDes= totalAgPrevus > 0 ? parseFloat(pct(totalDesist,      totalAgPrevus)).toFixed(0) : 0;
+  const pctZdSC = totalZdAsgn > 0 ? parseFloat(pct(totalZdSansCouv, totalZdAsgn)).toFixed(0) : 0;
+
   setText('kpi-sup', superviseurs.size);
   setText('kpi-sup-sub', `${sr} SR · ${sd} SD · ${regions.size} région${regions.size > 1 ? 's' : ''}`);
 
-  setText('kpi-zd-total', totalZdAsgn.toLocaleString('fr-FR'));
-  setText('kpi-zd-total-sub', `MAJ : ${txMaj}% · Dénom. : ${txDen}%`);
+  // ZD assignées — sous-titre avec les deux taux synthétisés
+  byId('kpi-zd-total').innerHTML =
+    totalZdAsgn.toLocaleString('fr-FR') + pctBadge(txMaj, rateColor(txMaj));
+  setText('kpi-zd-total-sub', `MAJ achevées · Dénom. : ${txDen}%`);
 
-  setText('kpi-maj-ach', totalMajAch.toLocaleString('fr-FR'));
-  setText('kpi-maj-ach-sub', `${txMaj}% · en cours : ${totalMajEnc} · total assignées : ${totalZdAsgn}`);
+  // MAJ achevées — badge % taux MAJ
+  byId('kpi-maj-ach').innerHTML =
+    totalMajAch.toLocaleString('fr-FR') + pctBadge(txMaj, rateColor(txMaj));
+  setText('kpi-maj-ach-sub', `sur ${totalZdAsgn} ZD assignées · en cours : ${totalMajEnc}`);
 
-  setText('kpi-den-ach', totalDenAch.toLocaleString('fr-FR'));
-  setText('kpi-den-ach-sub', `${txDen}% · en cours : ${totalDenEnc} · total assignées : ${totalZdAsgn}`);
+  // Dénombrement achevé — badge % taux Dénom.
+  byId('kpi-den-ach').innerHTML =
+    totalDenAch.toLocaleString('fr-FR') + pctBadge(txDen, rateColor(txDen));
+  setText('kpi-den-ach-sub', `sur ${totalZdAsgn} ZD assignées · en cours : ${totalDenEnc}`);
 
-  setText('kpi-agents-op', totalAgOp.toLocaleString('fr-FR'));
-  const txOp = pct(totalAgOp, totalAgPrevus);
-  setText('kpi-agents-op-sub', `${txOp}% opérationnels · ${totalAgAbs} absent${totalAgAbs>1?'s':''} · ${totalDesist} désist.`);
+  // Agents opérationnels — badge % présence
+  byId('kpi-agents-op').innerHTML =
+    totalAgOp.toLocaleString('fr-FR') + pctBadge(txOp, rateColor(txOp));
+  setText('kpi-agents-op-sub', `taux présence · ${totalAgAbs} absent${totalAgAbs>1?'s':''} (${pctAbs}%) · ${totalDesist} désist.`);
 
-  setText('kpi-non-payes', totalNonPaInteg.toLocaleString('fr-FR'));
-  setText('kpi-non-payes-sub', `sur ${totalAgPrevus} agents prévus`);
+  // Non payés — badge % des prévus
+  byId('kpi-non-payes').innerHTML =
+    totalNonPaInteg.toLocaleString('fr-FR') + (pctNP > 0 ? pctBadge(pctNP, '#dc2626') : '');
+  setText('kpi-non-payes-sub', `des agents prévus · ${totalAgPrevus} prévus`);
 
-  setText('kpi-tic', ticTotal.toLocaleString('fr-FR'));
-  setText('kpi-tic-sub', `Smartphones: ${ticPanne} · Réseau: ${ticReseau} · GPS: ${ticGPS}`);
+  // TIC — badge % agents touchés
+  const pctTic = totalAgPrevus > 0 ? parseFloat(pct(ticTotal, totalAgPrevus)).toFixed(0) : 0;
+  byId('kpi-tic').innerHTML =
+    ticTotal.toLocaleString('fr-FR') + (pctTic > 0 ? pctBadge(pctTic, '#7c3aed') : '');
+  setText('kpi-tic-sub', `prob. TIC · Smartphones: ${ticPanne} · Réseau: ${ticReseau} · GPS: ${ticGPS}`);
 
-  setText('kpi-incidents', incidents);
-  setText('kpi-incidents-sub', incidents > 0 ? 'Voir onglet Difficultés' : 'Aucun incident signalé');
+  // Incidents — badge % superviseurs concernés
+  const pctInc = d.length > 0 ? Math.round(incidents / d.length * 100) : 0;
+  byId('kpi-incidents').innerHTML =
+    incidents + (pctInc > 0 ? pctBadge(pctInc, '#dc2626') : '');
+  setText('kpi-incidents-sub', incidents > 0 ? `${pctInc}% des superviseurs · voir Difficultés` : 'Aucun incident signalé');
 
   // ─────── ALERTES ───────
   let alertHtml = '';
@@ -432,7 +459,8 @@ function renderOverview() {
     alertHtml += `<div class="alert-item critique">
       <div class="alert-item-header">
         <span class="alert-badge critique">P1 CRITIQUE</span>
-        <span class="alert-item-title">${totalNonPaInteg.toLocaleString('fr-FR')} agents non intégralement payés</span>
+        <span class="alert-item-title">${totalNonPaInteg.toLocaleString('fr-FR')} agents non intégralement payés
+          <small style="font-weight:400;opacity:.8">(${pctNP}% des prévus)</small></span>
       </div>
       <div class="alert-item-detail">${topNP}</div>
     </div>`;
@@ -445,7 +473,8 @@ function renderOverview() {
     alertHtml += `<div class="alert-item critique">
       <div class="alert-item-header">
         <span class="alert-badge critique">P1 URGENT</span>
-        <span class="alert-item-title">${incidents} incident${incidents>1?'s':''} sécuritaire${incidents>1?'s':''} signalé${incidents>1?'s':''}</span>
+        <span class="alert-item-title">${incidents} incident${incidents>1?'s':''} sécuritaire${incidents>1?'s':''} signalé${incidents>1?'s':''}
+          <small style="font-weight:400;opacity:.8">(${pctInc}% des superviseurs)</small></span>
       </div>
       <div class="alert-item-detail">${incDet}</div>
     </div>`;
@@ -455,7 +484,8 @@ function renderOverview() {
     alertHtml += `<div class="alert-item urgent">
       <div class="alert-item-header">
         <span class="alert-badge urgent">P1 URGENT</span>
-        <span class="alert-item-title">${totalZdSansCouv} ZD sans couverture ce jour</span>
+        <span class="alert-item-title">${totalZdSansCouv} ZD sans couverture ce jour
+          <small style="font-weight:400;opacity:.8">(${pctZdSC}% des assignées)</small></span>
       </div>
       <div class="alert-item-detail">Assigner des agents ou réservistes immédiatement</div>
     </div>`;
@@ -466,9 +496,9 @@ function renderOverview() {
     alertHtml += `<div class="alert-item urgent">
       <div class="alert-item-header">
         <span class="alert-badge urgent">P2 ÉLEVÉ</span>
-        <span class="alert-item-title">Taux MAJ faible : ${txMaj}% (${totalMajAch}/${totalZdAsgn} ZD)</span>
+        <span class="alert-item-title">Taux MAJ faible : ${txMaj}% — ${totalMajAch} / ${totalZdAsgn} ZD achevées</span>
       </div>
-      <div class="alert-item-detail">Accélérer la mise à jour des cartouches</div>
+      <div class="alert-item-detail">Accélérer la mise à jour des cartouches · Dénom. : ${txDen}%</div>
     </div>`;
   }
 
@@ -476,9 +506,10 @@ function renderOverview() {
     alertHtml += `<div class="alert-item info">
       <div class="alert-item-header">
         <span class="alert-badge info">P2 TIC</span>
-        <span class="alert-item-title">${ticTotal} problèmes TIC signalés</span>
+        <span class="alert-item-title">${ticTotal} problèmes TIC signalés
+          <small style="font-weight:400;opacity:.8">(${pctTic}% des agents)</small></span>
       </div>
-      <div class="alert-item-detail">Smartphones en panne: ${ticPanne} · Sans réseau: ${ticReseau} · GPS: ${ticGPS} · Applis: ${ticApp}</div>
+      <div class="alert-item-detail">Smartphones: ${ticPanne} · Réseau: ${ticReseau} · GPS: ${ticGPS} · Applis: ${ticApp}</div>
     </div>`;
   }
 
@@ -486,7 +517,8 @@ function renderOverview() {
     alertHtml += `<div class="alert-item urgent">
       <div class="alert-item-header">
         <span class="alert-badge urgent">P2 RH</span>
-        <span class="alert-item-title">${totalDesist} désistement${totalDesist>1?'s':''} définitif${totalDesist>1?'s':''} (cumul)</span>
+        <span class="alert-item-title">${totalDesist} désistement${totalDesist>1?'s':''} définitif${totalDesist>1?'s':''} (cumul)
+          <small style="font-weight:400;opacity:.8">(${pctDes}% des prévus)</small></span>
       </div>
       <div class="alert-item-detail">${totalReserv} réserviste${totalReserv!==1?'s':''} déployé${totalReserv!==1?'s':''}</div>
     </div>`;
