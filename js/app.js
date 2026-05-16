@@ -42,21 +42,64 @@ function filtered() {
 }
 
 /**
- * Déduplique filtered() : ne garde que la fiche la plus récente
- * par superviseur (certains superviseurs ont soumis plusieurs fiches).
- * Utilisé dans tous les rendus statistiques sauf les données brutes.
+ * Déduplique filtered() en construisant une "fiche virtuelle" par superviseur.
+ *
+ * Problèmes corrigés :
+ * 1. Noms en double par casse différente ("DUPONT" vs "Dupont") → normalisation
+ *    avant la clé de déduplication.
+ * 2. Superviseurs multi-fiches : chaque fiche couvre des ZCs DIFFÉRENTES sur
+ *    des jours différents → prendre uniquement la dernière fiche perdait toutes
+ *    les ZCs des autres jours (ZD assignées sous-comptées de ~40%).
+ *
+ * Stratégie :
+ * - ZC / département : agrégation par (sup_normalisé + nom_ZC/dept),
+ *   valeurs de la date la plus récente pour cette ZC.
+ * - Champs globaux (RH, TIC, appréciation…) : valeurs de la fiche la plus
+ *   récente (snapshot courant, pas de cumul).
  */
 function dedupedFiltered() {
+  const normName = s => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
   const rows = filtered();
-  const byName = new Map();
+  const byNorm = new Map();
+
   rows.forEach(r => {
-    const nom  = r['grp_profil/nom_superviseur'] || ('_id_' + r['_id']);
-    const date = r['grp_date/date_fiche'] || r['_submission_time'] || '';
-    const prev = byName.get(nom);
-    const prevDate = prev ? (prev['grp_date/date_fiche'] || prev['_submission_time'] || '') : '';
-    if (!prev || date > prevDate) byName.set(nom, r);
+    const norm = normName(r['grp_profil/nom_superviseur'] || ('_id_' + r['_id']));
+    const date = r['grp_date/date_fiche'] || (r['_submission_time'] || '').split('T')[0] || '';
+
+    if (!byNorm.has(norm)) {
+      byNorm.set(norm, { latestDate: '', latestFiche: r, zcMap: {}, deptMap: {} });
+    }
+    const sup = byNorm.get(norm);
+
+    // Fiche la plus récente → champs globaux (RH, TIC, appréciation…)
+    if (date >= sup.latestDate) {
+      sup.latestDate  = date;
+      sup.latestFiche = r;
+    }
+
+    // Par ZC : garder les valeurs de la date la plus récente pour cette ZC
+    // (couvre le cas où la même ZC est re-soumise sur plusieurs dates)
+    (r['grp_1b/rep_zc'] || []).forEach(zc => {
+      const n = zc['grp_1b/rep_zc/zc_nom']; if (!n) return;
+      if (!sup.zcMap[n] || date >= (sup.zcMap[n]._date || ''))
+        sup.zcMap[n] = { ...zc, _date: date };
+    });
+
+    // Par département (SR) : idem
+    (r['grp_1a/rep_dept'] || []).forEach(dep => {
+      const n = dep['grp_1a/rep_dept/dept_nom']; if (!n) return;
+      if (!sup.deptMap[n] || date >= (sup.deptMap[n]._date || ''))
+        sup.deptMap[n] = { ...dep, _date: date };
+    });
   });
-  return [...byName.values()];
+
+  // Fiche virtuelle : champs globaux de la dernière soumission +
+  // toutes les ZC/depts uniques (une entrée par ZC, valeur la plus récente)
+  return [...byNorm.values()].map(sup => ({
+    ...sup.latestFiche,
+    'grp_1b/rep_zc':   Object.values(sup.zcMap),
+    'grp_1a/rep_dept': Object.values(sup.deptMap),
+  }));
 }
 
 // ── Helpers ZD (évite la répétition dans chaque render) ─────────────────
