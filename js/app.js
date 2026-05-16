@@ -41,30 +41,52 @@ function filtered() {
   });
 }
 
+/**
+ * Déduplique filtered() : ne garde que la fiche la plus récente
+ * par superviseur (certains superviseurs ont soumis plusieurs fiches).
+ * Utilisé dans tous les rendus statistiques sauf les données brutes.
+ */
+function dedupedFiltered() {
+  const rows = filtered();
+  const byName = new Map();
+  rows.forEach(r => {
+    const nom  = r['grp_profil/nom_superviseur'] || ('_id_' + r['_id']);
+    const date = r['grp_date/date_fiche'] || r['_submission_time'] || '';
+    const prev = byName.get(nom);
+    const prevDate = prev ? (prev['grp_date/date_fiche'] || prev['_submission_time'] || '') : '';
+    if (!prev || date > prevDate) byName.set(nom, r);
+  });
+  return [...byName.values()];
+}
+
 // ── Helpers ZD (évite la répétition dans chaque render) ─────────────────
+// Priorité : lignes rep_zc (129/130 fiches) ou rep_dept → sinon champ tot_ (peu renseigné)
 function getZdAsgn(r) {
-  let v = toInt(r['grp_1b/tot_zd_sd'] || r['grp_1a/tot_zd_sr']);
-  if (!v) {
-    (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_zd_assignees']));
-    (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_zd_assignees']));
-  }
-  return v;
+  let vZC = 0;
+  (r['grp_1b/rep_zc']  ||[]).forEach(z => vZC += toInt(z['grp_1b/rep_zc/zc_zd_assignees']));
+  if (vZC) return vZC;
+  let vDept = 0;
+  (r['grp_1a/rep_dept']||[]).forEach(d => vDept += toInt(d['grp_1a/rep_dept/dept_zd_assignees']));
+  if (vDept) return vDept;
+  return toInt(r['grp_1b/tot_zd_sd'] || r['grp_1a/tot_zd_sr']);
 }
 function getMajAch(r) {
-  let v = toInt(r['grp_1b/tot_maj_sd'] || r['grp_1a/tot_maj_sr']);
-  if (!v) {
-    (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_maj_achevees']));
-    (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_maj_achevees']));
-  }
-  return v;
+  let vZC = 0;
+  (r['grp_1b/rep_zc']  ||[]).forEach(z => vZC += toInt(z['grp_1b/rep_zc/zc_maj_achevees']));
+  if (vZC) return vZC;
+  let vDept = 0;
+  (r['grp_1a/rep_dept']||[]).forEach(d => vDept += toInt(d['grp_1a/rep_dept/dept_maj_achevees']));
+  if (vDept) return vDept;
+  return toInt(r['grp_1b/tot_maj_sd'] || r['grp_1a/tot_maj_sr']);
 }
 function getDenAch(r) {
-  let v = toInt(r['grp_1b/tot_den_sd'] || r['grp_1a/tot_den_sr']);
-  if (!v) {
-    (r['grp_1b/rep_zc']  ||[]).forEach(z => v += toInt(z['grp_1b/rep_zc/zc_den_achevees']));
-    (r['grp_1a/rep_dept']||[]).forEach(d => v += toInt(d['grp_1a/rep_dept/dept_den_achevees']));
-  }
-  return v;
+  let vZC = 0;
+  (r['grp_1b/rep_zc']  ||[]).forEach(z => vZC += toInt(z['grp_1b/rep_zc/zc_den_achevees']));
+  if (vZC) return vZC;
+  let vDept = 0;
+  (r['grp_1a/rep_dept']||[]).forEach(d => vDept += toInt(d['grp_1a/rep_dept/dept_den_achevees']));
+  if (vDept) return vDept;
+  return toInt(r['grp_1b/tot_den_sd'] || r['grp_1a/tot_den_sr']);
 }
 function getMajEnc(r) {
   let v = 0;
@@ -246,7 +268,7 @@ function profileBadgeHtml(profil) {
 //  TAB 1 — VUE D'ENSEMBLE
 // ═══════════════════════════════════════════════════════════════════════════
 function renderOverview() {
-  const d = filtered();
+  const d = dedupedFiltered();
 
   // ── Badge filtre actif ──
   const filterBadgeEl = byId('ops-filter-badge');
@@ -322,7 +344,7 @@ function renderOverview() {
   const incidents = d.filter(r => r['grp_diff/incident_securite'] === 'oui').length;
 
   // ── Appréciation ──
-  const apprecCount = { satisfaisant:0, acceptable:0, difficile:0, tres_difficile:0, bloquee:0 };
+  const apprecCount = { satisfaisant:0, perfectible:0, intervention_urgente:0 };
   d.forEach(r => {
     const a = r['grp_appreciation/appreciation_globale'];
     if (a && apprecCount[a] !== undefined) apprecCount[a]++;
@@ -437,11 +459,9 @@ function renderOverview() {
 
   // ─────── APPRÉCIATION ───────
   const apprecCfg = [
-    { key:'satisfaisant',   label:'Satisfaisante',    color:'#16a34a' },
-    { key:'acceptable',     label:'Acceptable',       color:'#0891b2' },
-    { key:'difficile',      label:'Difficile',        color:'#d97706' },
-    { key:'tres_difficile', label:'Très difficile',   color:'#ea580c' },
-    { key:'bloquee',        label:'Bloquée',          color:'#dc2626' },
+    { key:'satisfaisant',         label:'Satisfaisante',        color:'#16a34a' },
+    { key:'perfectible',          label:'Perfectible',          color:'#d97706' },
+    { key:'intervention_urgente', label:'Intervention urgente',  color:'#dc2626' },
   ];
   const totalAppr = Object.values(apprecCount).reduce((s, v) => s + v, 0);
   let appHtml = `<div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase">
@@ -504,8 +524,9 @@ function renderOverview() {
     const tic   = toInt(r['grp_diff/tic_smartphones_panne']) + toInt(r['grp_diff/tic_sans_reseau']) +
                   toInt(r['grp_diff/tic_gps_defaillant']) + toInt(r['grp_diff/tic_app_non_jour']);
     const appr  = r['grp_appreciation/appreciation_globale'] || '—';
-    const apprColor = appr === 'satisfaisant' ? '#16a34a' : appr === 'acceptable' ? '#0891b2' :
-                      appr === 'difficile' ? '#d97706' : appr.includes('difficult') ? '#ea580c' : '#dc2626';
+    const apprColor = appr === 'satisfaisant' ? '#16a34a'
+                    : appr === 'perfectible'  ? '#d97706'
+                    : appr === 'intervention_urgente' ? '#dc2626' : '#94a3b8';
 
     tHtml += `<tr>
       <td><strong>${nom}</strong><br><span style="color:#94a3b8;font-size:.68rem">${date}</span></td>
@@ -580,7 +601,7 @@ function renderOverview() {
 //  TAB 2 — VUE TERRITORIALE
 // ═══════════════════════════════════════════════════════════════════════════
 function renderTerritoire() {
-  const data = filtered();
+  const data = dedupedFiltered();
   const body = byId('territoire-body');
   const countEl = byId('terr-count');
   if (!body) return;
@@ -696,7 +717,7 @@ function renderTerritoire() {
           const agPr  = toInt(r['grp_rh/rh_agents_prevus']);
           const np    = toInt(r['grp_rh/calc_non_integraux']);
           const appr  = r['grp_appreciation/appreciation_globale'] || '—';
-          const aC    = appr==='satisfaisant'?'#16a34a':appr==='acceptable'?'#0891b2':appr==='difficile'?'#d97706':'#dc2626';
+          const aC    = appr==='satisfaisant'?'#16a34a':appr==='perfectible'?'#d97706':appr==='intervention_urgente'?'#dc2626':'#94a3b8';
 
           html += `<tr>
             <td><strong>${nom}</strong></td>
@@ -784,7 +805,7 @@ function renderTerritoire() {
 // ═══════════════════════════════════════════════════════════════════════════
 function renderAvancement() {
   // Barres MAJ par superviseur
-  const rows = filtered().map(r => {
+  const rows = dedupedFiltered().map(r => {
     const nom    = r['grp_profil/nom_superviseur'] || '?';
     const profil = r['grp_profil/profil'] || '?';
     return { nom, profil,
@@ -827,7 +848,7 @@ function renderAvancement() {
       <th>Dénom. ach.</th><th>Dénom. enc.</th><th>Dénom. NE</th><th>Observations</th>
     </tr></thead><tbody>`;
 
-  filtered().forEach(r => {
+  dedupedFiltered().forEach(r => {
     const nom = r['grp_profil/nom_superviseur'] || '?';
     const profil = r['grp_profil/profil'] || '?';
 
@@ -889,7 +910,7 @@ function renderAvancement() {
 function renderRH() {
   let prevus=0, op=0, abs=0, desist=0, reserv=0, payes=0, nonPa=0, zdSansCouv=0;
   let tp=0, trf=0, tpd=0, tsal=0;
-  filtered().forEach(r => {
+  dedupedFiltered().forEach(r => {
     prevus     += toInt(r['grp_rh/rh_agents_prevus']);
     op         += toInt(r['grp_rh/rh_agents_operationnels']);
     abs        += toInt(r['grp_rh/rh_absents']);
@@ -917,6 +938,7 @@ function renderRH() {
     { label:'Agents non intégralement payés', val:nonPa, color:'#dc2626' },
     { label:'Sans transport / carburant', val:tp, color:'#d97706' },
     { label:'Sans perdiem / subsistance', val:tpd, color:'#d97706' },
+    { label:'Sans frais de formation', val:trf, color:'#7c3aed' },
     { label:'Sans salaire', val:tsal, color:'#dc2626' },
   ];
   byId('rh-paiements-body').innerHTML = paymItems.map(({ label, val, color }) => {
@@ -945,7 +967,7 @@ function renderDifficultes() {
   let matBot=0, matTorch=0, matChas=0, matCasq=0, matPolo=0, matSac=0;
   let incidents = 0;
 
-  filtered().forEach(r => {
+  dedupedFiltered().forEach(r => {
     ticPanne  += toInt(r['grp_diff/tic_smartphones_panne']);
     ticReseau += toInt(r['grp_diff/tic_sans_reseau']);
     ticGPS    += toInt(r['grp_diff/tic_gps_defaillant']);
